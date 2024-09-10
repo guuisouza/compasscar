@@ -69,4 +69,33 @@ app.post('/api/v1/cars', async (req, res) => {
     })
 })
 
+app.get('/api/v1/cars/:id', (req, res) => {
+    const id = req.params.id
+
+    const sqlSelectCarById = `SELECT C.id, C.brand, C.model, C.year, I.name as items FROM cars C LEFT JOIN cars_items I ON C.id = I.car_id WHERE C.id = ${id}`
+    pool.query(sqlSelectCarById, (err, data) => {
+        if(err) {
+            console.log(err)
+        }
+        
+        if (!data.length != 0) {
+            res.status(404).json({message: "car not found"})
+            return
+        }
+
+        const formattedData = JSON.parse(JSON.stringify(data))
+
+        // montando a resposta
+        const car = {
+            id: formattedData[0].id,
+            brand: formattedData[0].brand,
+            model: formattedData[0].model,
+            year: formattedData[0].year,
+            items: formattedData.map(row => row.items)
+        }
+
+        res.status(200).json(car)
+    })
+})
+
 app.listen(3000)
