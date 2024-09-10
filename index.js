@@ -98,4 +98,29 @@ app.get('/api/v1/cars/:id', (req, res) => {
     })
 })
 
+app.delete('/api/v1/cars/:id', (req, res) => {
+    const id = req.params.id
+
+    const sqlVerifyCar = `SELECT * FROM cars WHERE id = '${id}'`
+    pool.query(sqlVerifyCar, (err, data) => {
+        if(err) {
+            console.log(err)
+        }
+
+        if(!data.length != 0) {
+            return res.status(404).json({message: "car not found"})
+        }
+
+        const sqlDeleteCarById = `DELETE FROM cars WHERE id = ${id}`
+        pool.query(sqlDeleteCarById, (err) => {
+            if(err) {
+                console.log(err)
+            }
+
+            res.status(204)
+            res.end()
+        })
+    })
+})
+
 app.listen(3000)
