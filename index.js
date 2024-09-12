@@ -6,8 +6,112 @@ const app = express();
 app.use(express.urlencoded({extended: true}))
 app.use(express.json())
 
-app.get('/', (req, res) => {
-    console.log("Funcionando")
+app.get('/api/v1/cars', (req, res) => {
+    // receber o número de páginas da URL e limit, quando não é enviado o valor padrão é 1
+    const { page = 1} = req.query
+    let { limit } = req.query
+
+    const { brand, model, year } = req.query
+
+    if (limit < 1 || limit == undefined) { // verificacao de limit
+        limit = 5
+    } else if (limit > 10) {
+        limit = 10
+    }
+
+    // calcular a partir de qual item deve retornar
+    const offset = ((page * limit) - limit)
+
+    // numero da ultima página
+    let lastPage = 1
+
+    // array de filtros e valores que forem passados
+    let filters = []
+    let values = []
+    if (brand) {
+        filters.push("brand LIKE ?")
+        values.push(`%${brand}%`)
+    }
+    if (model) {
+        filters.push("model LIKE ?")
+        values.push(`%${model}%`)
+    }
+    if (year) {
+        filters.push("year = ?")
+        values.push(year)
+    }
+
+    let whereDinamic = ""
+
+    // se tiver filtros nos parametros, entra nesse if e executa o where like
+    // se não, executa a busca normal com todos os carros
+    if (filters.length > 0) {
+        whereDinamic = `WHERE ${filters.join(" AND ")}`
+
+        const sqlCountCarsFilters = `SELECT COUNT(*) AS total FROM cars ${whereDinamic}`;
+        pool.query(sqlCountCarsFilters, values, (err, countResult) => {
+            if(err) {
+                console.log(err)
+            }
+
+            const countCarsFilters = countResult[0].total
+
+            lastPage = Math.ceil(countCarsFilters / limit)
+            
+            const sqlGetCarsLike = `SELECT * FROM cars ${whereDinamic} LIMIT ? OFFSET ?`
+
+            values.push(parseInt(limit), parseInt(offset)) // adiciona ao array de valores: limit e offset
+            
+            pool.query(sqlGetCarsLike, values, (err, data) => {
+                if(err) {
+                    console.log(err)
+                }
+
+                const carsLike = data
+
+                if(carsLike.length != 0) {
+                    res.status(200)
+                    return res.json({
+                        count: countCarsFilters, 
+                        pages: lastPage,
+                        data: carsLike,
+                    }).end()
+                } else {
+                    res.status(204).end()
+                }
+            })
+        })
+    } else {
+        const sqlCountCars = `SELECT COUNT (*) AS total FROM cars`
+        pool.query(sqlCountCars, (err, countResult) => {
+            if(err) {
+                console.log(err)
+            }
+
+            const countCars = countResult[0].total
+
+            lastPage = Math.ceil(countCars / limit)
+
+            const sqlGetCars = `SELECT * FROM cars LIMIT ${limit} OFFSET ${offset}`
+            pool.query(sqlGetCars, (err, data) => {
+                if(err) {
+                    console.log(err)
+                }
+            
+                const cars = data
+                if (cars.length !=0) {
+                    res.status(200)
+                    return res.json({
+                        count: countCars, 
+                        pages: lastPage,
+                        data: cars,
+                    }).end()
+                } else {
+                    res.status(204).end()
+                }
+            })
+        })
+    }   
 })
 
 app.post('/api/v1/cars', async (req, res) => {
