@@ -281,7 +281,6 @@ app.patch('/api/v1/cars/:id', async (req, res) => {
                 })
             }
             
-
             if (items && Array.isArray(items)) {
                 const uniqueItems = [...new Set(items.filter(item => item && item.trim()))];
 
@@ -292,16 +291,15 @@ app.patch('/api/v1/cars/:id', async (req, res) => {
                         if(err) {
                             console.log(err)
                         }
-                    })
 
-                    const values = uniqueItems.map(item => [item.trim(), id]);
-                    console.log(values)
+                        const values = uniqueItems.map(item => [item.trim(), id]);
 
-                    const sqlInsertItems = `INSERT INTO cars_items (name, car_id) VALUES ?`
-                    pool.query(sqlInsertItems, [values], (err) => {
-                        if(err) {
-                            console.log(err)
-                        }
+                        const sqlInsertItems = `INSERT INTO cars_items (name, car_id) VALUES ?`
+                        pool.query(sqlInsertItems, [values], (err) => {
+                            if(err) {
+                                console.log(err)
+                            }
+                        })
                     })
                 }
             }
