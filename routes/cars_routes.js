@@ -7,25 +7,22 @@ router.use(express.urlencoded({extended: true}))
 router.use(express.json())
 
 router.get('/cars', (req, res) => {
-    // receber o número de páginas da URL e limit, quando não é enviado o valor padrão é 1
+
     const { page = 1} = req.query
     let { limit } = req.query
 
     const { brand, model, year } = req.query
 
-    if (limit < 1 || limit == undefined) { // verificacao de limit
+    if (limit < 1 || limit == undefined) { 
         limit = 5
     } else if (limit > 10) {
         limit = 10
     }
 
-    // calcular a partir de qual item deve retornar
     const offset = ((page * limit) - limit)
 
-    // numero da ultima página
     let lastPage = 1
 
-    // array de filtros e valores que forem passados
     let filters = []
     let values = []
     if (brand) {
@@ -43,8 +40,6 @@ router.get('/cars', (req, res) => {
 
     let whereDinamic = ""
 
-    // se tiver filtros nos parametros, entra nesse if e executa o where like
-    // se não, executa a busca normal com todos os carros
     if (filters.length > 0) {
         whereDinamic = `WHERE ${filters.join(" AND ")}`
 
@@ -120,7 +115,6 @@ router.post('/cars', (req, res) => {
     const year = req.body.year
     const items = req.body.items
 
-    // verificação campos obrigatórios
     if (!brand || brand.trim() === '') {
         return res.status(400).json({ error: "brand is required" });
     } else if (!model || model.trim() === '') {
@@ -132,12 +126,10 @@ router.post('/cars', (req, res) => {
         return res.status(400).json({ error: "items is required" });
     }
 
-    // verificacao ano
     if (parseInt(year) < new Date().getFullYear() -9 || parseInt(year) > new Date().getFullYear() + 1) {
         return res.status(400).json({ error: "year should be between 2015 and 2025" });
     }
 
-    // verificacao de carro existente
     const sqlVerifyAlredyExistCar = `SELECT * FROM cars WHERE (brand = '${brand}') AND (model = '${model}') AND (year = '${year}')`
     pool.query(sqlVerifyAlredyExistCar, (err, data) => {
         if(err) {
@@ -148,7 +140,6 @@ router.post('/cars', (req, res) => {
             res.status(409).json({ error: "there is already a car with this data" });
             return
         } else {
-            // insere o novo carro
             const sqlCreateCar = `INSERT INTO cars (brand, model, year) VALUES ('${brand}', '${model}', ${year})`
             pool.query(sqlCreateCar, (err, result)=>{
                 if(err) {
@@ -159,7 +150,6 @@ router.post('/cars', (req, res) => {
 
                 const uniqueItems = [...new Set(items.map(item => item.trim()))];
 
-                // Inserir os itens do carro
                 const sqlInsertItems = `INSERT INTO cars_items (name, car_id) VALUES ?`
                 const values = uniqueItems.map(item => [item, carId])
     
@@ -189,7 +179,6 @@ router.get('/cars/:id', (req, res) => {
 
         const formattedData = JSON.parse(JSON.stringify(data))
 
-        // montando a resposta
         const car = {
             id: formattedData[0].id,
             brand: formattedData[0].brand,
@@ -250,7 +239,6 @@ router.patch('/cars/:id', async (req, res) => {
             return res.status(400).json({ error: "year should be between 2015 and 2025" });
         }
 
-        // verificando carro já existente
         const sqlVerifyAlredyExistCar = `SELECT * FROM cars WHERE (brand = '${brand}') AND (model = '${model}') AND (year = '${year}')`
         pool.query(sqlVerifyAlredyExistCar, (err, data) => {
             if (err) {
@@ -284,7 +272,6 @@ router.patch('/cars/:id', async (req, res) => {
                 const uniqueItems = [...new Set(items.filter(item => item && item.trim()))];
 
                 if(uniqueItems.length > 0) {
-                    // remove os itens antigos
                     const sqlDeleteItems = `DELETE FROM cars_items WHERE car_id = ?`;
                     pool.query(sqlDeleteItems, [id], (err) => {
                         if(err) {
