@@ -114,7 +114,7 @@ app.get('/api/v1/cars', (req, res) => {
     }   
 })
 
-app.post('/api/v1/cars', async (req, res) => {
+app.post('/api/v1/cars', (req, res) => {
     const brand = req.body.brand
     const model = req.body.model
     const year = req.body.year
@@ -122,37 +122,37 @@ app.post('/api/v1/cars', async (req, res) => {
 
     // verificação campos obrigatórios
     if (!brand || brand.trim() === '') {
-        return res.status(400).json({ message: "brand is required" });
+        return res.status(400).json({ error: "brand is required" });
     } else if (!model || model.trim() === '') {
-        return res.status(400).json({ message: "model is required" });
+        return res.status(400).json({ error: "model is required" });
     } else if (!year) {
-        return res.status(400).json({ message: "year is required" });
+        return res.status(400).json({ error: "year is required" });
     } 
-    else if (!items || items.length === 0) {
-        return res.status(400).json({ message: "items is required" });
+    else if (!items || !Array.isArray(items) || items.length === 0) {
+        return res.status(400).json({ error: "items is required" });
     }
 
     // verificacao ano
-    if (parseInt(year) < 2015 || parseInt(year) > 2025) {
-        return res.status(400).json({ message: "year should be between 2015 and 2025" });
+    if (parseInt(year) < new Date().getFullYear() -9 || parseInt(year) > new Date().getFullYear() + 1) {
+        return res.status(400).json({ error: "year should be between 2015 and 2025" });
     }
 
     // verificacao de carro existente
     const sqlVerifyAlredyExistCar = `SELECT * FROM cars WHERE (brand = '${brand}') AND (model = '${model}') AND (year = '${year}')`
-    pool.query(sqlVerifyAlredyExistCar, function(err, data){
+    pool.query(sqlVerifyAlredyExistCar, (err, data) => {
         if(err) {
-            console.log(err)
+            return res.status(500).json({error: "internal server error"})
         }
 
         if(data.length !=0) {
-            res.status(409).json({ message: "there is already a car with this data" });
+            res.status(409).json({ error: "there is already a car with this data" });
             return
         } else {
             // insere o novo carro
             const sqlCreateCar = `INSERT INTO cars (brand, model, year) VALUES ('${brand}', '${model}', ${year})`
             pool.query(sqlCreateCar, (err, result)=>{
                 if(err) {
-                    console.log(err)
+                    return res.status(500).json({error: "internal server error"})
                 }
                 const carId = result.insertId
                 res.status(201).json({id: carId})
@@ -165,7 +165,7 @@ app.post('/api/v1/cars', async (req, res) => {
     
                 pool.query(sqlInsertItems, [values], (err) => {
                     if (err) {
-                        console.error(err);
+                        return res.status(500).json({error: "internal server error"})
                     }
                 }
             )})
@@ -179,11 +179,11 @@ app.get('/api/v1/cars/:id', (req, res) => {
     const sqlSelectCarById = `SELECT C.id, C.brand, C.model, C.year, I.name as items FROM cars C LEFT JOIN cars_items I ON C.id = I.car_id WHERE C.id = ${id}`
     pool.query(sqlSelectCarById, (err, data) => {
         if(err) {
-            console.log(err)
+            return res.status(500).json({error: "internal server error"})
         }
         
         if (!data.length != 0) {
-            res.status(404).json({message: "car not found"})
+            res.status(404).json({error: "car not found"})
             return
         }
 
@@ -208,17 +208,17 @@ app.delete('/api/v1/cars/:id', (req, res) => {
     const sqlVerifyCar = `SELECT * FROM cars WHERE id = '${id}'`
     pool.query(sqlVerifyCar, (err, data) => {
         if(err) {
-            console.log(err)
+            return res.status(500).json({error: "internal server error"})
         }
 
         if(!data.length != 0) {
-            return res.status(404).json({message: "car not found"})
+            return res.status(404).json({error: "car not found"})
         }
 
         const sqlDeleteCarById = `DELETE FROM cars WHERE id = ${id}`
         pool.query(sqlDeleteCarById, (err) => {
             if(err) {
-                console.log(err)
+                return res.status(500).json({error: "internal server error"})
             }
 
             res.status(204)
@@ -238,28 +238,27 @@ app.patch('/api/v1/cars/:id', async (req, res) => {
     const sqlVerifyCar = `SELECT * FROM cars WHERE id = '${id}'`
     pool.query(sqlVerifyCar, (err, data) => {
         if (err) {
-            console.log(err)
+            return res.status(500).json({error: "internal server error"})
         }
 
         if (!data.length != 0) {
-            res.status(404).json({message: "car not found"})
+            res.status(404).json({error: "car not found"})
             return
         }
 
-        if (parseInt(year) < 2015 || parseInt(year) > 2025) {
-            return res.status(400).json({ message: "year should be between 2015 and 2025" });
+        if (parseInt(year) < new Date().getFullYear() -9 || parseInt(year) > new Date().getFullYear() + 1) {
+            return res.status(400).json({ error: "year should be between 2015 and 2025" });
         }
 
         // verificando carro já existente
         const sqlVerifyAlredyExistCar = `SELECT * FROM cars WHERE (brand = '${brand}') AND (model = '${model}') AND (year = '${year}')`
         pool.query(sqlVerifyAlredyExistCar, (err, data) => {
             if (err) {
-                console.log(err)
+                return res.status(500).json({error: "internal server error"})
             }
 
             if(data.length !=0) {
-                res.status(409).json({ message: "there is already a car with this data" });
-                return
+               return res.status(409).json({ error: "there is already a car with this data" });
             }
 
             const validData = {}
@@ -276,7 +275,7 @@ app.patch('/api/v1/cars/:id', async (req, res) => {
                 const sqlUpdateCar = `UPDATE cars SET ${fields} WHERE id = '${id}'`
                 pool.query(sqlUpdateCar, values, (err) => {
                     if (err) {
-                        console.log(err)
+                        return res.status(500).json({error: "internal server error"})
                     }                
                 })
             }
@@ -289,7 +288,7 @@ app.patch('/api/v1/cars/:id', async (req, res) => {
                     const sqlDeleteItems = `DELETE FROM cars_items WHERE car_id = ?`;
                     pool.query(sqlDeleteItems, [id], (err) => {
                         if(err) {
-                            console.log(err)
+                            return res.status(500).json({error: "internal server error"})
                         }
 
                         const values = uniqueItems.map(item => [item.trim(), id]);
@@ -297,7 +296,7 @@ app.patch('/api/v1/cars/:id', async (req, res) => {
                         const sqlInsertItems = `INSERT INTO cars_items (name, car_id) VALUES ?`
                         pool.query(sqlInsertItems, [values], (err) => {
                             if(err) {
-                                console.log(err)
+                                return res.status(500).json({error: "internal server error"})
                             }
                         })
                     })
