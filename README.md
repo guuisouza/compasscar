@@ -20,6 +20,8 @@ O projeto consiste no desenvolvimento de uma API para ajudar a "CompassCar", que
 
 ## Rodando localmente
 
+-- ATENÇÃO: Ao deletar um carro foi habilitado no MySQL o ON DELETE CASCADE na chave estrangeira car_id na tabela cars_items.
+
 Clone o projeto
 
 ```bash
